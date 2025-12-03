@@ -1,25 +1,44 @@
 import arcade
 from car import PlayerCar
 from constants import SCREEN_HEIGHT, SCREEN_WIDTH
+from track import ScrollingBackground
 
 class MyGame(arcade.Window):
     def __init__(self, width, height):
         super().__init__(width, height, "Blind Circuit")
         arcade.set_background_color(arcade.color.LIGHT_BLUE)
+        # Player
+        self.car = PlayerCar(250, 400)
 
-        self.car = PlayerCar(250, 400)   # spawn position
-        self.scene = arcade.Scene()
-        self.scene.add_sprite("Player", self.car)
+        # Background
+        self.background = ScrollingBackground(
+            "assets/maps/road.png",
+            self.car,
+            width,
+            height
+        )
+
+        # Make your own sprite list instead of Scene
+        self.player_list = arcade.SpriteList()
+        self.player_list.append(self.car)
+
         
     def setup(self):
         pass
 
     def on_draw(self):
         self.clear()
-        self.scene.draw()
+        self.background.draw()
+        self.player_list.draw()
+
+        
+        # Draw "Hit wall!" text if car hit a wall (based on slowdown timer)
+        if self.car.hit_wall:
+            arcade.draw_text("Hit wall!", self.width//2, self.height//2, arcade.color.WHITE, 80, anchor_x="center", anchor_y="center", bold=True)
 
     def on_update(self, delta_time):
-        self.car.update(SCREEN_WIDTH, SCREEN_HEIGHT)
+        self.background.update()
+        self.player_list.update()
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.LEFT:
@@ -36,12 +55,3 @@ class MyGame(arcade.Window):
             self.car.change_x = 0
         elif key in (arcade.key.UP, arcade.key.DOWN):
             self.car.change_y = 0
-
-
-
-def main():
-    window = MyGame(400, 700)
-    arcade.run()
-
-if __name__ == "__main__":
-    main()

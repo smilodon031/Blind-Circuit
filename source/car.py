@@ -13,26 +13,31 @@ class PlayerCar(arcade.Sprite):
         self.max_speed = 10
         self.acceleration = 0.2
         self.hit_wall = False
+        self.wall_slowdown_timer = 0  # Timer to maintain slow speed after wall hit
 
-    def update(self, SCREEN_WIDTH, SCREEN_HEIGHT):
+    def update(self, delta_time=0, SCREEN_WIDTH=None, SCREEN_HEIGHT=None):
+        # Only allow horizontal movement; car never moves vertically
         self.center_x += self.change_x
-        self.center_y += self.change_y
+        # self.center_y += self.change_y  # Disabled - car stays fixed vertically
 
         # Keep the car within screen boundaries and check for wall collisions
-        if self.center_x < 50:
-            self.center_x = 50
+        if self.center_x < 100:
+            self.center_x = 100
             print("Hit Left wall")
             self.hit_wall = True
             self.speed = 2
-        elif self.center_x > 450:
-            self.center_x = 450
+            self.wall_slowdown_timer = 20  # Slow down for 20 frames
+        elif self.center_x > 400:
+            self.center_x = 400
             print("Hit Right wall")
             self.hit_wall = True
             self.speed = 2
+            self.wall_slowdown_timer = 20  # Slow down for 20 frames
         else: 
             self.hit_wall = False
-            self.speed = 5    
-    def on_draw(self):
-        arcade.start_render()
-        if self.hit_wall:
-            arcade.draw_text("Hit wall!", self.width//2, self.height//2, arcade.color.WHITE, 80, anchor_x = "center", anchor_y = "center",  bold=True)
+            # Decrement slowdown timer when not hitting walls
+            if self.wall_slowdown_timer > 0:
+                self.wall_slowdown_timer -= 1
+                self.speed = 2
+            else:
+                self.speed = 5    
