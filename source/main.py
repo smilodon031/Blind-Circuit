@@ -1,8 +1,10 @@
 import arcade
 from game import MyGame
+from constants import SCREEN_HEIGHT, SCREEN_WIDTH
+
 
 def main():
-    window = MyGame(500,800)
+    window = MyGame(SCREEN_WIDTH, SCREEN_HEIGHT)
     window.setup()
     arcade.run()
 

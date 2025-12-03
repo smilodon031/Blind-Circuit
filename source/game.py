@@ -1,25 +1,25 @@
 import arcade
 from car import PlayerCar
+from constants import SCREEN_HEIGHT, SCREEN_WIDTH
 
 class MyGame(arcade.Window):
     def __init__(self, width, height):
         super().__init__(width, height, "Blind Circuit")
         arcade.set_background_color(arcade.color.LIGHT_BLUE)
 
-        self.car = PlayerCar(200, 100)   # spawn position
+        self.car = PlayerCar(250, 400)   # spawn position
         self.scene = arcade.Scene()
         self.scene.add_sprite("Player", self.car)
         
     def setup(self):
         pass
 
-
     def on_draw(self):
         self.clear()
         self.scene.draw()
 
     def on_update(self, delta_time):
-        self.scene.update()
+        self.car.update(SCREEN_WIDTH, SCREEN_HEIGHT)
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.LEFT:
@@ -34,8 +34,9 @@ class MyGame(arcade.Window):
     def on_key_release(self, key, modifiers):
         if key in (arcade.key.LEFT, arcade.key.RIGHT):
             self.car.change_x = 0
-        if key in (arcade.key.UP, arcade.key.DOWN):
+        elif key in (arcade.key.UP, arcade.key.DOWN):
             self.car.change_y = 0
+
 
 
 def main():
