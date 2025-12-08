@@ -1,49 +1,82 @@
 import arcade
+import os
 
 class ScrollingBackground:
-    def __init__(self, image_path, car, screen_width, screen_height):
+    def __init__(self, tmx_map_path, car, screen_width, screen_height):
         self.car = car
         self.screen_width = screen_width
         self.screen_height = screen_height
 
-        # Load the texture once
-        self.texture = arcade.load_texture(image_path)
+        # Convert relative path to absolute path based on project root
+        if not os.path.isabs(tmx_map_path):
+            # Assume path is relative to project root (parent of source directory)
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            tmx_map_path = os.path.join(project_root, tmx_map_path)
 
-        # --- Create two background sprites ---
-        self.bg_1 = arcade.Sprite(image_path)
-        self.bg_2 = arcade.Sprite(image_path)
+        # Make sure the file exists
+        if not os.path.exists(tmx_map_path):
+            print(f"Warning: Tiled map file not found at: {tmx_map_path}")
 
-        # Scale background to screen width
-        scale = screen_width / self.bg_1.width
-        self.bg_1.scale = scale
-        self.bg_2.scale = scale
+        # Load the Tiled map
+        self.tile_map = arcade.load_tilemap(tmx_map_path)
 
-        # Position them
-        self.bg_1.center_x = screen_width // 2 + 25
-        self.bg_2.center_x = screen_width // 2 + 25
+        # The tilemap object has sprite_lists for each layer
+        if self.tile_map:
+            # Get the sprite lists for the tilemap layers
+            self.background_list = arcade.SpriteList()
 
-        # One at bottom, one directly above
-        self.bg_1.center_y = self.bg_1.height // 2
-        self.bg_2.center_y = self.bg_1.center_y + self.bg_1.height
+            # Iterate through the sprite lists in the tilemap
+            for layer_name in self.tile_map.sprite_lists:
+                layer_sprite_list = self.tile_map.sprite_lists[layer_name]
 
-        # Put in a SpriteList for easy drawing
-        self.background_list = arcade.SpriteList()
-        self.background_list.append(self.bg_1)
-        self.background_list.append(self.bg_2)
+                # Add all sprites from this layer to our background list
+                for sprite in layer_sprite_list:
+                    self.background_list.append(sprite)
+
+            # Calculate map dimensions based on tiles
+            self.map_width = self.tile_map.width * self.tile_map.tile_width
+            self.map_height = self.tile_map.height * self.tile_map.tile_height
+        else:
+            self.map_width = screen_width
+            self.map_height = screen_height
+            self.background_list = arcade.SpriteList()
+
+        # Initialize camera offset
+        self.offset_x = 0
+        self.offset_y = 0
 
     def update(self):
-        # Scroll relative to car movement exactly like your old code
-        scroll_amount = self.car.change_y
+        # Scroll based on car's speed (negative because we're scrolling the map backwards)
+        # Multiply by a factor to make scrolling more noticeable
+        scroll_amount = self.car.speed * 2.0  # Increased scroll factor for more visible movement
 
-        self.bg_1.center_y -= scroll_amount
-        self.bg_2.center_y -= scroll_amount
+        # Update the Y offset to create scrolling effect based on car's speed
+        self.offset_y += scroll_amount
 
-        # Wrap when an image moves off screen
-        if self.bg_1.center_y <= -self.bg_1.height // 2:
-            self.bg_1.center_y = self.bg_2.center_y + self.bg_2.height
-
-        if self.bg_2.center_y <= -self.bg_2.height // 2:
-            self.bg_2.center_y = self.bg_1.center_y + self.bg_1.height
+        # Keep the offset within bounds of the map
+        max_offset_y = max(0, self.map_height - self.screen_height)
+        if self.offset_y > max_offset_y:
+            self.offset_y = max_offset_y
+        if self.offset_y < 0:
+            self.offset_y = 0
 
     def draw(self):
-        self.background_list.draw()
+        # Create a temporary sprite list with adjusted positions
+        temp_sprite_list = arcade.SpriteList()
+
+        for sprite in self.background_list:
+            # Create a copy of the sprite with adjusted position
+            temp_sprite = arcade.Sprite()
+            temp_sprite.texture = sprite.texture
+            temp_sprite.scale = sprite.scale
+            temp_sprite.alpha = sprite.alpha  # Preserve transparency
+
+            # For a racing game, only adjust vertical scrolling based on the car's forward motion
+            # The horizontal position should stay fixed to the original world position
+            temp_sprite.center_x = sprite.center_x  # Keep original horizontal position
+            temp_sprite.center_y = (sprite.center_y - self.offset_y) - (self.car.center_y - self.screen_height // 4)
+
+            temp_sprite_list.append(temp_sprite)
+
+        # Draw all sprites with adjusted positions
+        temp_sprite_list.draw()
