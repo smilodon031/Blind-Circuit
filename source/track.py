@@ -1,82 +1,68 @@
 import arcade
-import os
 
 class ScrollingBackground:
-    def __init__(self, tmx_map_path, car, screen_width, screen_height):
+    def __init__(self, map_path, car, screen_width, screen_height):
         self.car = car
         self.screen_width = screen_width
         self.screen_height = screen_height
 
-        # Convert relative path to absolute path based on project root
-        if not os.path.isabs(tmx_map_path):
-            # Assume path is relative to project root (parent of source directory)
-            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            tmx_map_path = os.path.join(project_root, tmx_map_path)
+        # Initialize camera - check if Camera2D is available in this version
+        try:
+            self.camera = arcade.Camera2D()
+        except AttributeError:
+            # Fallback for older versions - might not have scrolling camera
+            self.camera = None
+        self.view_bottom = 0
 
-        # Make sure the file exists
-        if not os.path.exists(tmx_map_path):
-            print(f"Warning: Tiled map file not found at: {tmx_map_path}")
+        # Load map
+        self.tile_map = arcade.load_tilemap(map_path, scaling=1.0)
 
-        # Load the Tiled map
-        self.tile_map = arcade.load_tilemap(tmx_map_path)
+        # Extract the road layer
+        self.road_layer = self.tile_map.sprite_lists["Tile Layer 1"]
 
-        # The tilemap object has sprite_lists for each layer
-        if self.tile_map:
-            # Get the sprite lists for the tilemap layers
-            self.background_list = arcade.SpriteList()
-
-            # Iterate through the sprite lists in the tilemap
-            for layer_name in self.tile_map.sprite_lists:
-                layer_sprite_list = self.tile_map.sprite_lists[layer_name]
-
-                # Add all sprites from this layer to our background list
-                for sprite in layer_sprite_list:
-                    self.background_list.append(sprite)
-
-            # Calculate map dimensions based on tiles
-            self.map_width = self.tile_map.width * self.tile_map.tile_width
-            self.map_height = self.tile_map.height * self.tile_map.tile_height
-        else:
-            self.map_width = screen_width
-            self.map_height = screen_height
-            self.background_list = arcade.SpriteList()
-
-        # Initialize camera offset
-        self.offset_x = 0
-        self.offset_y = 0
+        # For a wider view, we could potentially scale the camera or adjust the view
+        # Increase the horizontal view to make the map feel wider
+        # Use zoom instead of modifying viewport directly to avoid compatibility issues
+        if self.camera:
+            # Instead of modifying viewport, use zoom to show a wider area
+            # A zoom value < 1.0 means we see more of the scene (zoomed out)
+            try:
+                self.camera.zoom = 0.8  # Zoom out to show more horizontal space
+            except AttributeError:
+                # If zoom property doesn't exist, the camera will work normally
+                pass
 
     def update(self):
-        # Scroll based on car's speed (negative because we're scrolling the map backwards)
-        # Multiply by a factor to make scrolling more noticeable
-        scroll_amount = self.car.speed * 2.0  # Increased scroll factor for more visible movement
+        # Scroll the camera based on the car's speed (how fast it's moving forward)
+        # The car stays fixed vertically, so we scroll the world instead
+        if self.camera:
+            screen_center_x = self.car.center_x
+            # Move camera vertically based on car speed (simulates forward movement)
+            screen_center_y = self.view_bottom + self.car.speed
+            self.view_bottom = screen_center_y
 
-        # Update the Y offset to create scrolling effect based on car's speed
-        self.offset_y += scroll_amount
-
-        # Keep the offset within bounds of the map
-        max_offset_y = max(0, self.map_height - self.screen_height)
-        if self.offset_y > max_offset_y:
-            self.offset_y = max_offset_y
-        if self.offset_y < 0:
-            self.offset_y = 0
+            # Update camera position to follow the car's movement
+            try:
+                self.camera.position = (screen_center_x, screen_center_y)
+            except AttributeError:
+                # Some versions use center_x, center_y attributes directly
+                self.camera.center_x = screen_center_x
+                self.camera.center_y = screen_center_y
+        else:
+            # If no camera available, scroll the road sprites manually
+            self.view_bottom += self.car.speed
+            # Move all sprites in the road layer in the opposite direction to simulate scrolling
+            for sprite in self.road_layer:
+                sprite.center_y -= self.car.speed
 
     def draw(self):
-        # Create a temporary sprite list with adjusted positions
-        temp_sprite_list = arcade.SpriteList()
+        # Use the camera to draw the scrolling background if available
+        if self.camera:
+            # Use the camera if available
+            self.camera.use()
 
-        for sprite in self.background_list:
-            # Create a copy of the sprite with adjusted position
-            temp_sprite = arcade.Sprite()
-            temp_sprite.texture = sprite.texture
-            temp_sprite.scale = sprite.scale
-            temp_sprite.alpha = sprite.alpha  # Preserve transparency
+        # Draw the road layer
+        self.road_layer.draw()
 
-            # For a racing game, only adjust vertical scrolling based on the car's forward motion
-            # The horizontal position should stay fixed to the original world position
-            temp_sprite.center_x = sprite.center_x  # Keep original horizontal position
-            temp_sprite.center_y = (sprite.center_y - self.offset_y) - (self.car.center_y - self.screen_height // 4)
-
-            temp_sprite_list.append(temp_sprite)
-
-        # Draw all sprites with adjusted positions
-        temp_sprite_list.draw()
+        # Potentially draw with a modified view to make map appear wider
+        # This approach depends on the camera implementation

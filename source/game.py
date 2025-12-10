@@ -8,43 +8,40 @@ class MyGame(arcade.Window):
         super().__init__(width, height, "Blind Circuit")
         arcade.set_background_color(arcade.color.LIGHT_BLUE)
 
-        # Player - position car at a fixed Y position near bottom of screen for visual consistency
-        self.car = PlayerCar(width // 2, height // 4)  # Car stays near the bottom of the screen
+        # Initialize track and background - these will be set up in setup()
+        self.background = None
+        self.car = None
+        self.player_list = None
 
-        # Background
-        self.background = ScrollingBackground(
-            "assets/maps/prototype_map.tmx",
-            self.car,
-            width,
-            height
-        )
+
+    def setup(self):
+        # Player
+        self.car = PlayerCar(250, 400)
 
         # Make your own sprite list instead of Scene
         self.player_list = arcade.SpriteList()
-        self.player_list.append(self.car)
 
-    def setup(self):
-        pass
+        # Initialize the background with a simple track image or TMX map
+        # For now, using what we have in the ScrollingBackground class
+        map_path = "assets/maps/Level1.tmx"  # Use the same path as in track.py
+        self.background = ScrollingBackground(map_path, self.car, self.width, self.height)
+
+        # Add the car to the player list
+        self.player_list.append(self.car)
 
     def on_draw(self):
         self.clear()
         self.background.draw()
         self.player_list.draw()
 
+
         # Draw "Hit wall!" text if car hit a wall (based on slowdown timer)
         if self.car.hit_wall:
             arcade.draw_text("Hit wall!", self.width//2, self.height//2, arcade.color.WHITE, 80, anchor_x="center", anchor_y="center", bold=True)
 
     def on_update(self, delta_time):
-        # Only update the background (track scrolls based on car's speed)
         self.background.update()
-
-        # Update car for horizontal movement only (no vertical movement)
-        self.car.update()
-
-        # Keep car's Y position fixed to maintain the illusion that it's not moving vertically
-        # The track movement creates the illusion of forward movement
-        self.car.center_y = self.height // 4
+        self.player_list.update()
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.LEFT:

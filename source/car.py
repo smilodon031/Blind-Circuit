@@ -1,10 +1,12 @@
 import arcade
+from constants import SCREEN_HEIGHT, SCREEN_WIDTH
 from PIL import Image
 
 
 class PlayerCar(arcade.Sprite):
     def __init__(self, x, y):
-        super().__init__()
+        # Initialize with the default sprite
+        super().__init__("assets/sprites/player/player_car.png", scale=2.0)
 
         # Initialize position
         self.center_x = x
@@ -68,7 +70,11 @@ class PlayerCar(arcade.Sprite):
         self.animation_counter = 0
         self.animation_frame_duration = 8  # Change frame every 8 updates for animation
 
-    def update(self):
+        # Additional properties for wall collision handling
+        self.wall_slowdown_timer = 0  # Timer to maintain slow speed after wall hit
+        self.acceleration = 0.2
+
+    def update(self, delta_time=1/60):
         if self.destroyed:
             return
 
@@ -101,6 +107,32 @@ class PlayerCar(arcade.Sprite):
         # The car should NOT move vertically - only horizontal movement
         # The vertical movement is handled by the scrolling background
         self.change_y = 0
+
+        # Only allow horizontal movement; car never moves vertically
+        self.center_x += self.change_x
+        # self.center_y += self.change_y  # Disabled - car stays fixed vertically
+
+        # Keep the car within screen boundaries and check for wall collisions
+        if self.center_x < 100:
+            self.center_x = 100
+            print("Hit Left wall")
+            self.hit_wall = True
+            self.speed = 2
+            self.wall_slowdown_timer = 20  # Slow down for 20 frames
+        elif self.center_x > 400:
+            self.center_x = 400
+            print("Hit Right wall")
+            self.hit_wall = True
+            self.speed = 2
+            self.wall_slowdown_timer = 20  # Slow down for 20 frames
+        else:
+            self.hit_wall = False
+            # Decrement slowdown timer when not hitting walls
+            if self.wall_slowdown_timer > 0:
+                self.wall_slowdown_timer -= 1
+                # When timer expires, return to normal speed
+                if self.wall_slowdown_timer <= 0:
+                    self.speed = min(self.speed, self.max_speed)
 
         # Update animation
         self.update_animation()
