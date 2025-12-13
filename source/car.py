@@ -115,13 +115,11 @@ class PlayerCar(arcade.Sprite):
         # Keep the car within screen boundaries and check for wall collisions
         if self.center_x < 100:
             self.center_x = 100
-            print("Hit Left wall")
             self.hit_wall = True
             self.speed = 2
             self.wall_slowdown_timer = 20  # Slow down for 20 frames
         elif self.center_x > 400:
             self.center_x = 400
-            print("Hit Right wall")
             self.hit_wall = True
             self.speed = 2
             self.wall_slowdown_timer = 20  # Slow down for 20 frames
