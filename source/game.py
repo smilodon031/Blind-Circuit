@@ -40,7 +40,7 @@ class MyGame(arcade.Window):
             arcade.draw_text("Hit wall!", self.width//2, self.height//2, arcade.color.WHITE, 80, anchor_x="center", anchor_y="center", bold=True)
 
     def on_update(self, delta_time):
-        self.background.update()
+        self.background.update(delta_time)
         self.player_list.update()
 
     def on_key_press(self, key, modifiers):

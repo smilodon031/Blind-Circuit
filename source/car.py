@@ -47,7 +47,6 @@ class PlayerCar(arcade.Sprite):
         self.brake_power = 0.3  # Reduced brake power accordingly
         self.coast = 0.03  # Reduced coast rate
         self.lives = 3
-        self.destroyed = False
         self.hit_wall = False  # Add hit_wall property for game integration
 
         # Input tracking properties
@@ -75,8 +74,8 @@ class PlayerCar(arcade.Sprite):
         self.acceleration = 0.2
 
     def update(self, delta_time=1/60):
-        if self.destroyed:
-            return
+        if self.lives <= 0:
+            self.exploding = True
 
         # Handle input-based movement
         if self.up_pressed:
@@ -100,9 +99,9 @@ class PlayerCar(arcade.Sprite):
         # Calculate movement based on direction input (only horizontal movement)
         self.change_x = 0
         if self.left_pressed:
-            self.change_x = -abs(self.speed)  # Move left at current speed magnitude
+            self.change_x = -abs(self.speed-3)  # Move left at current speed magnitude
         elif self.right_pressed:
-            self.change_x = abs(self.speed)   # Move right at current speed magnitude
+            self.change_x = abs(self.speed-3)   # Move right at current speed magnitude
 
         # The car should NOT move vertically - only horizontal movement
         # The vertical movement is handled by the scrolling background
@@ -113,13 +112,13 @@ class PlayerCar(arcade.Sprite):
         # self.center_y += self.change_y  # Disabled - car stays fixed vertically
 
         # Keep the car within screen boundaries and check for wall collisions
-        if self.center_x < 100:
-            self.center_x = 100
+        if self.center_x < 120:
+            self.center_x = 120
             self.hit_wall = True
             self.speed = 2
             self.wall_slowdown_timer = 20  # Slow down for 20 frames
-        elif self.center_x > 400:
-            self.center_x = 400
+        elif self.center_x > 380:
+            self.center_x = 380
             self.hit_wall = True
             self.speed = 2
             self.wall_slowdown_timer = 20  # Slow down for 20 frames

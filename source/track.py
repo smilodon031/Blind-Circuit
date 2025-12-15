@@ -1,74 +1,61 @@
 import arcade
 
+
 class ScrollingBackground:
     def __init__(self, map_path, car, screen_width, screen_height):
         self.car = car
         self.screen_width = screen_width
         self.screen_height = screen_height
 
-        # Initialize camera - check if Camera2D is available in this version
-        try:
-            self.camera = arcade.Camera2D()
-        except AttributeError:
-            # Fallback for older versions - might not have scrolling camera
-            self.camera = None
+        self.cooldown = 0
+        self.puddle_timer = 5
         self.view_bottom = 0
 
         # Load map
-        self.tile_map = arcade.load_tilemap(map_path, scaling=2.0)
+        self.tile_map = arcade.load_tilemap(map_path, scaling=1.57)
 
-        # Extract the road layer
-        if "Road" in self.tile_map.sprite_lists:
-            self.road_layer = self.tile_map.sprite_lists["Road"]
-        elif "Tile Layer 1" in self.tile_map.sprite_lists:
-            self.road_layer = self.tile_map.sprite_lists["Tile Layer 1"]
+        # Extract the layers
+        self.road_layer = self.tile_map.sprite_lists["Road"]
+        self.object1_layer = self.tile_map.sprite_lists["Object1"]
+        self.finish_line_layer = self.tile_map.sprite_lists["FinishLine"]
+        self.puddles_layer = self.tile_map.sprite_lists["Puddles"]
+        self.speed_ramp_layer = self.tile_map.sprite_lists["SpeedRamp"]
+        
+
+    def update(self, delta_time):
+        if self.cooldown > 0:
+            self.cooldown -= 1
         else:
-            # Use first available layer
-            self.road_layer = list(self.tile_map.sprite_lists.values())[0]
-
-        # For a wider view, we could potentially scale the camera or adjust the view
-        # Increase the horizontal view to make the map feel wider
-        # Use zoom instead of modifying viewport directly to avoid compatibility issues
-        if self.camera:
-            # Instead of modifying viewport, use zoom to show a wider area
-            # A zoom value < 1.0 means we see more of the scene (zoomed out)
-            try:
-                self.camera.zoom = 0.8  # Zoom out to show more horizontal space
-            except AttributeError:
-                # If zoom property doesn't exist, the camera will work normally
-                pass
-
-    def update(self):
-        # Scroll the camera based on the car's speed (how fast it's moving forward)
-        # The car stays fixed vertically, so we scroll the world instead
-        if self.camera:
-            screen_center_x = self.car.center_x
-            # Move camera vertically based on car speed (simulates forward movement)
-            screen_center_y = self.view_bottom + self.car.speed
-            self.view_bottom = screen_center_y
-
-            # Update camera position to follow the car's movement
-            try:
-                self.camera.position = (screen_center_x, screen_center_y)
-            except AttributeError:
-                # Some versions use center_x, center_y attributes directly
-                self.camera.center_x = screen_center_x
-                self.camera.center_y = screen_center_y
-        else:
-            # If no camera available, scroll the road sprites manually
             self.view_bottom += self.car.speed
-            # Move all sprites in the road layer in the opposite direction to simulate scrolling
-            for sprite in self.road_layer:
+
+            if arcade.check_for_collision_with_list(self.car, self.object1_layer):
+                self.car.lives -= 1
+                self.car.center_y -= self.car.speed * 0.2
+                self.cooldown = 5
+            if arcade.check_for_collision_with_list(self.car, self.finish_line_layer):
+                self.car.center_x = self.car.last_checkpoint_x
+                self.car.center_y = self.car.last_checkpoint_y
+            if arcade.check_for_collision_with_list(self.car, self.puddles_layer):
+                if self.puddle_timer > 0:
+                    self.car.speed = 1
+                    self.puddle_timer -= delta_time
+            if arcade.check_for_collision_with_list(self.car, self.speed_ramp_layer):
+                self.car.speed += 3
+        
+        
+        scroll_layers = [self.road_layer, self.object1_layer, self.finish_line_layer, self.puddles_layer, self.speed_ramp_layer]
+        # Move all sprites in the road layer in the opposite direction to simulate scrolling
+        for layer in scroll_layers:
+            for sprite in layer:
                 sprite.center_y -= self.car.speed
 
-    def draw(self):
-        # Use the camera to draw the scrolling background if available
-        if self.camera:
-            # Use the camera if available
-            self.camera.use()
 
+    def draw(self):
         # Draw the road layer
         self.road_layer.draw()
+        self.object1_layer.draw()
+        self.finish_line_layer.draw()
+        self.puddles_layer.draw()
 
         # Potentially draw with a modified view to make map appear wider
         # This approach depends on the camera implementation
