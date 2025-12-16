@@ -1,14 +1,13 @@
 import arcade
 
-
 class ScrollingBackground:
     def __init__(self, map_path, car, screen_width, screen_height):
         self.car = car
         self.screen_width = screen_width
         self.screen_height = screen_height
 
-        self.cooldown = 0
-        self.puddle_timer = 5
+        self.puddle_timer = 10
+        self.speed_ramp_timer = 5
         self.view_bottom = 0
 
         # Load map
@@ -23,26 +22,33 @@ class ScrollingBackground:
         
 
     def update(self, delta_time):
-        if self.cooldown > 0:
-            self.cooldown -= 1
-        else:
-            self.view_bottom += self.car.speed
+        
+        self.view_bottom += self.car.speed
 
-            if arcade.check_for_collision_with_list(self.car, self.object1_layer):
-                self.car.lives -= 1
-                self.car.center_y -= self.car.speed * 0.2
-                self.cooldown = 5
-            if arcade.check_for_collision_with_list(self.car, self.finish_line_layer):
-                self.car.center_x = self.car.last_checkpoint_x
-                self.car.center_y = self.car.last_checkpoint_y
-            if arcade.check_for_collision_with_list(self.car, self.puddles_layer):
-                if self.puddle_timer > 0:
-                    self.car.speed = 1
-                    self.puddle_timer -= delta_time
-            if arcade.check_for_collision_with_list(self.car, self.speed_ramp_layer):
-                self.car.speed += 3
-        
-        
+        object1_list = arcade.check_for_collision_with_list(self.car, self.object1_layer)          
+        for object in object1_list:
+            object.remove_from_sprite_lists()
+            self.car.lives -= 1
+            
+        finish_line_list = arcade.check_for_collision_with_list(self.car, self.finish_line_layer)
+        if finish_line_list:
+            finish = finish_line_list[0]
+            if self.car.center_y > finish.center_y:
+                self.car.race_finished = True
+        puddles_list = arcade.check_for_collision_with_list(self.car, self.puddles_layer)
+        if puddles_list:
+            if self.puddle_timer > 0:
+                self.car.speed = 1
+                self.puddle_timer -= delta_time
+        speed_ramp_list = arcade.check_for_collision_with_list(self.car, self.speed_ramp_layer)
+        if speed_ramp_list:
+            if self.speed_ramp_timer > 0:
+                self.car.speed += 4
+                self.speed_ramp_timer -= delta_time
+
+        if self.car.race_finished:
+            self.car.speed = 0
+    
         scroll_layers = [self.road_layer, self.object1_layer, self.finish_line_layer, self.puddles_layer, self.speed_ramp_layer]
         # Move all sprites in the road layer in the opposite direction to simulate scrolling
         for layer in scroll_layers:
@@ -56,6 +62,6 @@ class ScrollingBackground:
         self.object1_layer.draw()
         self.finish_line_layer.draw()
         self.puddles_layer.draw()
-
+        self.speed_ramp_layer.draw()
         # Potentially draw with a modified view to make map appear wider
         # This approach depends on the camera implementation

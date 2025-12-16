@@ -1,6 +1,7 @@
 import arcade
 from constants import SCREEN_HEIGHT, SCREEN_WIDTH
 from PIL import Image
+import time
 
 
 class PlayerCar(arcade.Sprite):
@@ -12,11 +13,8 @@ class PlayerCar(arcade.Sprite):
         self.center_x = x
         self.center_y = y
 
-        # Load sprite sheet and slice frames
-        import os
-        # Get the project root directory (parent of source directory)
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        sheet_path = os.path.join(project_root, "assets", "sprites", "player", "player_animations.png")
+
+        sheet_path = "assets/sprites/player/player_animations.png"
 
         FRAME_WIDTH = 44
         FRAME_HEIGHT = 80
@@ -48,6 +46,7 @@ class PlayerCar(arcade.Sprite):
         self.coast = 0.03  # Reduced coast rate
         self.lives = 3
         self.hit_wall = False  # Add hit_wall property for game integration
+        self.race_finished = False
 
         # Input tracking properties
         self.left_pressed = False
@@ -76,7 +75,8 @@ class PlayerCar(arcade.Sprite):
     def update(self, delta_time=1/60):
         if self.lives <= 0:
             self.exploding = True
-
+            self.race_finished = True
+            
         # Handle input-based movement
         if self.up_pressed:
             self.speed += self.accel
@@ -112,13 +112,13 @@ class PlayerCar(arcade.Sprite):
         # self.center_y += self.change_y  # Disabled - car stays fixed vertically
 
         # Keep the car within screen boundaries and check for wall collisions
-        if self.center_x < 120:
-            self.center_x = 120
+        if self.center_x < 70:
+            self.center_x = 70
             self.hit_wall = True
             self.speed = 2
             self.wall_slowdown_timer = 20  # Slow down for 20 frames
-        elif self.center_x > 380:
-            self.center_x = 380
+        elif self.center_x > 430:
+            self.center_x = 430
             self.hit_wall = True
             self.speed = 2
             self.wall_slowdown_timer = 20  # Slow down for 20 frames
