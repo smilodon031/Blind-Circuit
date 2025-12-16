@@ -18,25 +18,29 @@ class PlayerCar(arcade.Sprite):
 
         FRAME_WIDTH = 44
         FRAME_HEIGHT = 80
+        ROWS = 4
+        COLUMNS = 4
+        COUNT = ROWS * COLUMNS
 
-        self.frames = [[None for _ in range(4)] for _ in range(4)]
+        # Load the full sprite sheet as textures
+        textures = arcade.load_spritesheet(
+            sheet_path,
+            FRAME_WIDTH,
+            FRAME_HEIGHT,
+            COLUMNS,
+            COUNT
+        )
 
-        # Load the sprite sheet image and extract frames using PIL
-        sprite_sheet_image = Image.open(sheet_path)
+        # Rebuild into frames[row][col]
+        self.frames = []
+        index = 0
+        for row in range(ROWS):
+            row_frames = []
+            for col in range(COLUMNS):
+                row_frames.append(textures[index])
+                index += 1
+            self.frames.append(row_frames)
 
-        # Extract each frame from the sprite sheet image
-        for row in range(4):
-            for col in range(4):
-                x_pos = col * FRAME_WIDTH
-                y_pos = row * FRAME_HEIGHT
-
-                # Crop the frame from the sprite sheet
-                frame_image = sprite_sheet_image.crop((x_pos, y_pos, x_pos + FRAME_WIDTH, y_pos + FRAME_HEIGHT))
-
-                # Convert to arcade texture
-                frame_texture = arcade.Texture(f"frame_{row}_{col}", frame_image)
-
-                self.frames[row][col] = frame_texture
 
         # Initialize car properties
         self.speed = 0
