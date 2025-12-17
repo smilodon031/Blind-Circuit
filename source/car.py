@@ -1,8 +1,5 @@
 import arcade
 from constants import SCREEN_HEIGHT, SCREEN_WIDTH
-from PIL import Image
-import time
-
 
 class PlayerCar(arcade.Sprite):
     def __init__(self, x, y):
@@ -18,25 +15,22 @@ class PlayerCar(arcade.Sprite):
 
         FRAME_WIDTH = 44
         FRAME_HEIGHT = 80
-        ROWS = 4
-        COLUMNS = 4
-        COUNT = ROWS * COLUMNS
 
         # Load the full sprite sheet as textures
         textures = arcade.load_spritesheet(
             sheet_path,
             FRAME_WIDTH,
             FRAME_HEIGHT,
-            COLUMNS,
-            COUNT
+            4,
+            16
         )
 
         # Rebuild into frames[row][col]
         self.frames = []
         index = 0
-        for row in range(ROWS):
+        for row in range(4):
             row_frames = []
-            for col in range(COLUMNS):
+            for col in range(4):
                 row_frames.append(textures[index])
                 index += 1
             self.frames.append(row_frames)
@@ -44,13 +38,17 @@ class PlayerCar(arcade.Sprite):
 
         # Initialize car properties
         self.speed = 0
-        self.max_speed = 6  # Reduced from 10 to 6
+        self.max_speed = 8  # Reduced from 10 to 6
         self.accel = 0.15  # Reduced acceleration to match lower max speed
         self.brake_power = 0.3  # Reduced brake power accordingly
         self.coast = 0.03  # Reduced coast rate
+        self.turn_speed = 2.5  # Fixed turning speed for responsive control
         self.lives = 3
         self.hit_wall = False  # Add hit_wall property for game integration
-        self.race_finished = False
+        self.race_lost = False
+        self.race_won = False
+        self.losing = False  # Flag to indicate losing state (during explosion countdown)
+        self.lose_timer = 0  # Countdown timer for explosion animation duration
 
         # Input tracking properties
         self.left_pressed = False
@@ -68,7 +66,9 @@ class PlayerCar(arcade.Sprite):
         self.explosion_index = 0
         self.explosion_counter = 0
         self.explosion_frame_duration = 10  # Update explosion frame every 10 updates
-        # Animation timing for alternating straight frames
+        self.explosion_over = False
+        # Calculate total explosion animation duration (4 frames * 10 updates per frame)
+        self.explosion_total_duration = 5 * self.explosion_frame_duration
         self.animation_counter = 0
         self.animation_frame_duration = 8  # Change frame every 8 updates for animation
 
@@ -77,43 +77,67 @@ class PlayerCar(arcade.Sprite):
         self.acceleration = 0.2
 
     def update(self, delta_time=1/60):
-        if self.lives <= 0:
+        # Check if player has lost all lives and trigger losing state
+        if self.lives <= 0 and not self.losing and not self.explosion_over:
+            self.losing = True
             self.exploding = True
-            self.race_finished = True
-            
-        # Handle input-based movement
-        if self.up_pressed:
-            self.speed += self.accel
-        elif self.down_pressed:
-            self.speed -= self.brake_power
-        else:
-            # Coasting when no input
-            if self.speed > 0:
-                self.speed = max(0, self.speed - self.coast)
-            elif self.speed < 0:
-                self.speed = min(0, self.speed + self.coast)
-
-        # Clamp speed to max
-        self.speed = max(-self.max_speed, min(self.speed, self.max_speed))
-
-        # Car must never move in reverse — if speed < 0, force it back to 0
-        if self.speed < 0:
+            self.race_lost = True
+            self.lose_timer = self.explosion_total_duration
             self.speed = 0
+            # Clear all input flags to freeze movement
+            self.left_pressed = False
+            self.right_pressed = False
+            self.up_pressed = False
+            self.down_pressed = False
+        
+        # Handle countdown timer during losing state
+        if self.losing:
+            self.lose_timer -= 1
+            if self.lose_timer <= 0:
+                self.explosion_over = True
+                self.losing = False
+            
+        # Handle input-based movement (only if not losing)
+        if self.losing:
+            # Freeze movement during losing state
+            self.speed = 0
+            self.change_x = 0
+            self.change_y = 0
+        else:
+            # Handle input-based movement
+            if self.up_pressed:
+                self.speed += self.accel
+            elif self.down_pressed:
+                self.speed -= self.brake_power
+            else:
+                # Coasting when no input
+                if self.speed > 0:
+                    self.speed = max(0, self.speed - self.coast)
+                elif self.speed < 0:
+                    self.speed = min(0, self.speed + self.coast)
 
-        # Calculate movement based on direction input (only horizontal movement)
-        self.change_x = 0
-        if self.left_pressed:
-            self.change_x = -abs(self.speed-3)  # Move left at current speed magnitude
-        elif self.right_pressed:
-            self.change_x = abs(self.speed-3)   # Move right at current speed magnitude
+            # Clamp speed to max
+            self.speed = max(-self.max_speed, min(self.speed, self.max_speed))
 
-        # The car should NOT move vertically - only horizontal movement
-        # The vertical movement is handled by the scrolling background
-        self.change_y = 0
+            # Car must never move in reverse — if speed < 0, force it back to 0
+            if self.speed < 0:
+                self.speed = 0
 
-        # Only allow horizontal movement; car never moves vertically
-        self.center_x += self.change_x
-        # self.center_y += self.change_y  # Disabled - car stays fixed vertically
+            # Calculate movement based on direction input (only horizontal movement)
+            # Use fixed turn_speed for responsive, controlled turning
+            self.change_x = 0
+            if self.left_pressed:
+                self.change_x = -self.turn_speed  # Move left at fixed turning speed
+            elif self.right_pressed:
+                self.change_x = self.turn_speed   # Move right at fixed turning speed
+
+            # The car should NOT move vertically - only horizontal movement
+            # The vertical movement is handled by the scrolling background
+            self.change_y = 0
+
+            # Only allow horizontal movement; car never moves vertically
+            self.center_x += self.change_x
+            # self.center_y += self.change_y  # Disabled - car stays fixed vertically
 
         # Keep the car within screen boundaries and check for wall collisions
         if self.center_x < 70:
@@ -206,3 +230,7 @@ class PlayerCar(arcade.Sprite):
             self.explosion_index = 0
             self.explosion_counter = 0
             self.current_frame = self.frames[3][0]
+            # Also trigger losing state if not already triggered
+            if not self.losing:
+                self.losing = True
+                self.lose_timer = self.explosion_total_duration
