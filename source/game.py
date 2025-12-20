@@ -1,8 +1,10 @@
 import arcade
+import random
 from car import PlayerCar
 import constants
 from level1 import Level1Background
 
+# Game state constants
 STATE_START = 0
 STATE_PLAYING = 1
 STATE_WIN = 2
@@ -38,28 +40,31 @@ class MyGame(arcade.Window):
 
     def on_draw(self):
         self.clear()
+        # Reset viewport to normal state at start of each frame
+        arcade.set_viewport(0, self.width, 0, self.height)
 
         if self.state == STATE_START:
-            arcade.draw_text(
-                "BLIND CIRCUIT",
-                self.width//2,
-                self.height//2 + 80,
-                arcade.color.WHITE,
-                60,
-                anchor_x="center"
-            )
-            arcade.draw_text(
-                "PRESS ANY KEY TO START",
-                self.width//2,
-                self.height//2,
-                arcade.color.WHITE,
-                30,
-                anchor_x="center"
-            )
+            # Draw the start screen image instead of text
+            if not hasattr(self, 'start_screen_sprite'):
+                self.start_screen_sprite = arcade.Sprite("assets/sprites/player/start_screen.png", scale=1)
+                self.start_screen_sprite.center_x = self.width // 2
+                self.start_screen_sprite.center_y = self.height // 2
+
+            # Draw the start screen sprite
+            self.start_screen_sprite.draw()
 
         elif self.state == STATE_PLAYING:
+            # Camera shake effect
+            if self.background.shake_time > 0:
+                shake_x = random.uniform(-5, 5)
+                shake_y = random.uniform(-5, 5)
+                arcade.set_viewport(-shake_x, self.width - shake_x, -shake_y, self.height - shake_y)
+            
             self.background.draw()
             self.player_list.draw()
+            
+            # Reset viewport
+            arcade.set_viewport(0, self.width, 0, self.height)
 
         elif self.state == STATE_WIN:
             arcade.draw_text(
@@ -68,7 +73,7 @@ class MyGame(arcade.Window):
                 self.height//2 + 40,
                 arcade.color.GREEN,
                 50,
-                anchor_x="center"
+                anchor_x="center",
             )
             arcade.draw_text(
                 "Press N for Next Level",
@@ -76,7 +81,7 @@ class MyGame(arcade.Window):
                 self.height//2,
                 arcade.color.WHITE,
                 25,
-                anchor_x="center"
+                anchor_x="center",
             )
 
         elif self.state == STATE_LOSE:
@@ -86,26 +91,34 @@ class MyGame(arcade.Window):
                 self.height//2 + 40,
                 arcade.color.RED,
                 50,
-                anchor_x="center"
-            )
+                anchor_x="center",)
             arcade.draw_text(
                 "Press R to Retry",
                 self.width//2,
                 self.height//2,
                 arcade.color.WHITE,
                 25,
-                anchor_x="center"
-            )
+                anchor_x="center",)
 
 
         # Draw "Hit wall!" text if car hit a wall (based on slowdown timer)
         if self.car.hit_wall:
-            arcade.draw_text("Hit wall!", self.width//2, self.height//2, arcade.color.WHITE, 80, anchor_x="center", anchor_y="center", bold=True)
+            arcade.draw_text(
+            "Hit wall!",
+            self.width // 2,
+            self.height // 2,
+            arcade.color.WHITE,
+            80,
+            anchor_x="center",
+            anchor_y="center",
+            bold=True,)
+
 
     def on_update(self, delta_time):
         self.background.update(delta_time)
         self.player_list.update()
-        
+
+        # Check win/lose conditions
         if self.car.explosion_over:
             self.state = STATE_LOSE
         if self.car.race_won:
@@ -122,7 +135,7 @@ class MyGame(arcade.Window):
             if key == arcade.key.N:
                 self.level_index += 1
                 if self.level_index >= len(constants.LEVEL_CLASSES):
-                    self.level_index = 0  # Loop back or handle final screen
+                    self.level_index = 0  # Loop back to first level
                 self.state = STATE_PLAYING
                 self.setup()
             return
@@ -147,7 +160,7 @@ class MyGame(arcade.Window):
     def on_key_release(self, key, modifiers):
         if self.state != STATE_PLAYING:
             return
-        
+
         # Ignore key releases during losing state
         if self.car.losing:
             return
