@@ -22,6 +22,18 @@ class MyGame(arcade.Window):
         self.current_level = 1
         self.state = STATE_START
         self.level_index = 0  # starts at first level
+        # FIXED: Load start screen sprite once during init, not every frame in on_draw
+        self.start_screen_sprite = arcade.Sprite(
+            "assets/sprites/player/start_screen.png",
+            scale=1
+        )
+        self.start_screen_sprite.center_x = width // 2
+        self.start_screen_sprite.center_y = height // 2
+        # Load hit wall texture for shake effect
+        self.hit_wall_rect = arcade.load_texture("assets/sprites/player/hit_wall.png")
+        # Load custom font for all text
+        arcade.load_font("assets/font/Pixelify_Sans/static/PixelifySans-Regular.ttf")
+        self.font_name = "Pixelify Sans"
 
 
     def setup(self):
@@ -44,17 +56,11 @@ class MyGame(arcade.Window):
         arcade.set_viewport(0, self.width, 0, self.height)
 
         if self.state == STATE_START:
-            # Draw the start screen image instead of text
-            if not hasattr(self, 'start_screen_sprite'):
-                self.start_screen_sprite = arcade.Sprite("assets/sprites/player/start_screen.png", scale=1)
-                self.start_screen_sprite.center_x = self.width // 2
-                self.start_screen_sprite.center_y = self.height // 2
-
-            # Draw the start screen sprite
+            # FIXED: Sprite is now loaded once in __init__, just draw it here
             self.start_screen_sprite.draw()
 
         elif self.state == STATE_PLAYING:
-            # Camera shake effect
+            # Camera shake effect for obstacle hits
             if self.background.shake_time > 0:
                 shake_x = random.uniform(-5, 5)
                 shake_y = random.uniform(-5, 5)
@@ -62,6 +68,14 @@ class MyGame(arcade.Window):
             
             self.background.draw()
             self.player_list.draw()
+            
+            # Draw hit wall rectangle with shake effect (shake managed by level1.py)
+            if self.car.hit_wall:
+                arcade.draw_texture_rectangle(
+                    constants.SCREEN_WIDTH//2 + self.background.hit_wall_shake_offset_x,
+                    constants.SCREEN_HEIGHT//2 + self.background.hit_wall_shake_offset_y,
+                    500, 800, self.hit_wall_rect
+                )
             
             # Reset viewport
             arcade.set_viewport(0, self.width, 0, self.height)
@@ -74,6 +88,7 @@ class MyGame(arcade.Window):
                 arcade.color.GREEN,
                 50,
                 anchor_x="center",
+                font_name=self.font_name,
             )
             arcade.draw_text(
                 "Press N for Next Level",
@@ -82,6 +97,7 @@ class MyGame(arcade.Window):
                 arcade.color.WHITE,
                 25,
                 anchor_x="center",
+                font_name=self.font_name,
             )
 
         elif self.state == STATE_LOSE:
@@ -91,27 +107,18 @@ class MyGame(arcade.Window):
                 self.height//2 + 40,
                 arcade.color.RED,
                 50,
-                anchor_x="center",)
+                anchor_x="center",
+                font_name=self.font_name,
+            )
             arcade.draw_text(
                 "Press R to Retry",
                 self.width//2,
                 self.height//2,
                 arcade.color.WHITE,
                 25,
-                anchor_x="center",)
-
-
-        # Draw "Hit wall!" text if car hit a wall (based on slowdown timer)
-        if self.car.hit_wall:
-            arcade.draw_text(
-            "Hit wall!",
-            self.width // 2,
-            self.height // 2,
-            arcade.color.WHITE,
-            80,
-            anchor_x="center",
-            anchor_y="center",
-            bold=True,)
+                anchor_x="center",
+                font_name=self.font_name,
+            )
 
 
     def on_update(self, delta_time):

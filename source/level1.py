@@ -1,4 +1,5 @@
 import arcade
+import random
 
 class Level1Background:
     def __init__(self, car, screen_width, screen_height):
@@ -12,8 +13,13 @@ class Level1Background:
         self.map_path = "assets/maps/Level1.tmx"
         self.broken_texture = arcade.load_texture('assets/sprites/obstacles/broken_texture.png')
         
-        # Camera shake
+        # Camera shake for obstacle hits
         self.shake_time = 0
+        # Shake for hit_wall_rect (exposed for game.py to use)
+        self.hit_wall_shake_time = 0
+        # Current shake offsets (exposed for game.py to use)
+        self.hit_wall_shake_offset_x = 0
+        self.hit_wall_shake_offset_y = 0
 
         # Load map
         self.tile_map = arcade.load_tilemap(self.map_path, scaling=1.57)
@@ -37,9 +43,12 @@ class Level1Background:
             if obstacle.texture != self.broken_texture:
                 obstacle.texture = self.broken_texture
                 self.car.lives -= 1
-                # Start camera shake
+                # Start camera shake for obstacle hit
                 self.shake_time = 0.3
 
+        # Trigger shake when car hits wall
+        if self.car.hit_wall and self.hit_wall_shake_time <= 0:
+            self.hit_wall_shake_time = 0.3
             
         # Check finish line collision
         finish_line_list = arcade.check_for_collision_with_list(self.car, self.finish_line_layer)
@@ -73,8 +82,18 @@ class Level1Background:
         # Update camera shake timer
         if self.shake_time > 0:
             self.shake_time -= delta_time
+        # Update hit wall shake timer
+        if self.hit_wall_shake_time > 0:
+            self.hit_wall_shake_time -= delta_time
 
     def draw(self):
+        # Calculate shake offsets for hit_wall_rect
+        self.hit_wall_shake_offset_x = 0
+        self.hit_wall_shake_offset_y = 0
+        if self.hit_wall_shake_time > 0:
+            self.hit_wall_shake_offset_x = random.uniform(-2, 2)
+            self.hit_wall_shake_offset_y = random.uniform(-2, 2)
+        
         # Draw the road layer
         self.road_layer.draw()
         self.object1_layer.draw()
