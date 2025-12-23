@@ -39,7 +39,7 @@ class PlayerCar(arcade.Sprite):
         # Car physics properties
         self.speed = 0
         self.max_speed = 8
-        self.accel = 0.15
+        self.accel = 0.05
         self.brake_power = 0.3
         self.coast = 0.03
         self.turn_speed = 2.5  # Fixed turning speed for responsive control
@@ -77,6 +77,10 @@ class PlayerCar(arcade.Sprite):
         self.acceleration = 0.2
         # Initialize the destroyed attribute that was referenced but not defined
         self.destroyed = False
+
+    def current_speed(self):
+        """Returns current speed as an integer 0-8 for dashboard indexing"""
+        return max(0, min(8, int(round(self.speed))))
 
     def update(self, delta_time=1/60):
         # Check if player has lost all lives and trigger losing state

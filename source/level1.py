@@ -7,6 +7,13 @@ class Level1Background:
         self.screen_width = screen_width
         self.screen_height = screen_height
 
+        # Track boundaries for progress calculation (vertical/y-axis)
+        # Track starts at y=0 and ends at the finish line
+        # Map is 200 tiles tall, each tile is 64px, scaled by 1.57
+        self.track_start_y = 0
+        # Calculate track end based on map height: 200 tiles * 64px * 1.57 scaling
+        self.track_end_y = 200 * 64 * 1.57  # Approximately 20,096 pixels
+
         self.puddle_timer = 10
         self.speed_ramp_timer = 5
         self.view_bottom = 0
