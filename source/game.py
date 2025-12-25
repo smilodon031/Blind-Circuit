@@ -43,11 +43,28 @@ class MyGame(arcade.Window):
         self.heart_texture = None
         # Skull texture for when out of lives (loaded in setup)
         self.skull_texture = None
+        # Light overlay texture (loaded in setup)
+        self.light_texture = None
 
 
     def setup(self):
-        # Player
+        # Player - create fresh car each time
         self.car = PlayerCar(250, 400)
+        
+        # Reset car state to ensure it's ready
+        self.car.race_won = False
+        self.car.race_lost = False
+        self.car.losing = False
+        self.car.explosion_over = False
+        self.car.exploding = False
+        self.car.destroyed = False
+        self.car.lives = 3
+        self.car.speed = 0
+        self.car.hit_wall = False
+        self.car.left_pressed = False
+        self.car.right_pressed = False
+        self.car.up_pressed = False
+        self.car.down_pressed = False
 
         # Make your own sprite list instead of Scene
         self.player_list = arcade.SpriteList()
@@ -69,6 +86,8 @@ class MyGame(arcade.Window):
         self.heart_texture = arcade.load_texture("assets/sprites/player/heart.png")
         # Load skull texture for when out of lives
         self.skull_texture = arcade.load_texture("assets/sprites/player/skull.png")
+        # Load light overlay texture
+        self.light_texture = arcade.load_texture("assets/maps/light.png")
         
         # Initialize display speed to match car's initial speed
         self.display_speed = 0.0
@@ -84,6 +103,69 @@ class MyGame(arcade.Window):
         if self.state == STATE_START:
             # FIXED: Sprite is now loaded once in __init__, just draw it here
             self.start_screen_sprite.draw()
+            
+            # Draw level selection buttons
+            # Level 1 button
+            level1_button_x = self.width // 2 - 80
+            level1_button_y = self.height // 2 - 100
+            level1_button_width = 120
+            level1_button_height = 50
+            arcade.draw_rectangle_filled(
+                level1_button_x,
+                level1_button_y,
+                level1_button_width,
+                level1_button_height,
+                arcade.color.DARK_GRAY
+            )
+            arcade.draw_rectangle_outline(
+                level1_button_x,
+                level1_button_y,
+                level1_button_width,
+                level1_button_height,
+                arcade.color.WHITE,
+                2
+            )
+            arcade.draw_text(
+                "Level 1",
+                level1_button_x,
+                level1_button_y,
+                arcade.color.WHITE,
+                20,
+                anchor_x="center",
+                anchor_y="center",
+                font_name=self.font_name,
+            )
+            
+            # Level 2 button
+            level2_button_x = self.width // 2 + 80
+            level2_button_y = self.height // 2 - 100
+            level2_button_width = 120
+            level2_button_height = 50
+            arcade.draw_rectangle_filled(
+                level2_button_x,
+                level2_button_y,
+                level2_button_width,
+                level2_button_height,
+                arcade.color.DARK_GRAY
+            )
+            arcade.draw_rectangle_outline(
+                level2_button_x,
+                level2_button_y,
+                level2_button_width,
+                level2_button_height,
+                arcade.color.WHITE,
+                2
+            )
+            arcade.draw_text(
+                "Level 2",
+                level2_button_x,
+                level2_button_y,
+                arcade.color.WHITE,
+                20,
+                anchor_x="center",
+                anchor_y="center",
+                font_name=self.font_name,
+            )
 
         elif self.state == STATE_PLAYING:
             # Camera shake effect for obstacle hits
@@ -105,6 +187,16 @@ class MyGame(arcade.Window):
             
             # Reset viewport before drawing HUD elements (HUD should be in screen space)
             arcade.set_viewport(0, self.width, 0, self.height)
+            
+            # Draw light overlay if player is in light area (for Level 2)
+            if self.background.in_light and self.light_texture:
+                arcade.draw_texture_rectangle(
+                    self.width // 2,
+                    self.height // 2,
+                    self.width,
+                    self.height,
+                    self.light_texture
+                )
             
             # Draw dashboard HUD at bottom center of screen
             if self.dashboard_textures:
@@ -289,9 +381,40 @@ class MyGame(arcade.Window):
         if self.car.race_won:
             self.state = STATE_WIN
 
+    def on_mouse_press(self, x, y, button, modifiers):
+        """Handle mouse clicks for level selection"""
+        if self.state == STATE_START and button == arcade.MOUSE_BUTTON_LEFT:
+            # Level 1 button (left side)
+            level1_button_x = self.width // 2 - 80
+            level1_button_y = self.height // 2 - 100
+            level1_button_width = 120
+            level1_button_height = 50
+            
+            if (level1_button_x - level1_button_width // 2 <= x <= level1_button_x + level1_button_width // 2 and
+                level1_button_y - level1_button_height // 2 <= y <= level1_button_y + level1_button_height // 2):
+                self.level_index = 0
+                self.state = STATE_PLAYING
+                self.setup()
+                return
+            
+            # Level 2 button (right side)
+            level2_button_x = self.width // 2 + 80
+            level2_button_y = self.height // 2 - 100
+            level2_button_width = 120
+            level2_button_height = 50
+            
+            if (level2_button_x - level2_button_width // 2 <= x <= level2_button_x + level2_button_width // 2 and
+                level2_button_y - level2_button_height // 2 <= y <= level2_button_y + level2_button_height // 2):
+                self.level_index = 1
+                self.state = STATE_PLAYING
+                self.setup()
+                return
+
     def on_key_press(self, key, modifiers):
 
         if self.state == STATE_START:
+            # Default to Level 1 if any key is pressed (for backward compatibility)
+            self.level_index = 0
             self.state = STATE_PLAYING
             self.setup()
             return
@@ -312,7 +435,7 @@ class MyGame(arcade.Window):
             return
 
         # Only allow car movement when playing and not in losing state
-        if self.state == STATE_PLAYING and not self.car.losing:
+        if self.state == STATE_PLAYING and self.car and not self.car.losing:
             if key == arcade.key.LEFT:
                 self.car.left_pressed = True
             elif key == arcade.key.RIGHT:
@@ -327,7 +450,7 @@ class MyGame(arcade.Window):
             return
 
         # Ignore key releases during losing state
-        if self.car.losing:
+        if not self.car or self.car.losing:
             return
 
         if key == arcade.key.LEFT:

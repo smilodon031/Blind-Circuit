@@ -1,7 +1,7 @@
 import arcade
 import random
 
-class Level1Background:
+class Level2Background:
     def __init__(self, car, screen_width, screen_height):
         self.car = car
         self.screen_width = screen_width
@@ -9,15 +9,15 @@ class Level1Background:
 
         # Track boundaries for progress calculation (vertical/y-axis)
         # Track starts at y=0 and ends at the finish line
-        # Map is 200 tiles tall, each tile is 64px, scaled by 1.57
+        # Map is 220 tiles tall, each tile is 64px, scaled by 1.57
         self.track_start_y = 0
-        # Calculate track end based on map height: 200 tiles * 64px * 1.57 scaling
-        self.track_end_y = 200 * 64 * 1.57  # Approximately 20,096 pixels
+        # Calculate track end based on map height: 220 tiles * 64px * 1.57 scaling
+        self.track_end_y = 220 * 64 * 1.57  # Approximately 22,105 pixels
 
         self.puddle_timer = 10
         self.speed_ramp_timer = 5
         self.view_bottom = 0
-        self.map_path = "assets/maps/Level1.tmx"
+        self.map_path = "assets/maps/level2.tmx"
         self.broken_texture = arcade.load_texture('assets/sprites/obstacles/broken_texture.png')
         
         # Camera shake for obstacle hits
@@ -28,7 +28,7 @@ class Level1Background:
         self.hit_wall_shake_offset_x = 0
         self.hit_wall_shake_offset_y = 0
         
-        # Light overlay state (always False for Level 1, but kept for consistency)
+        # Light overlay state (exposed for game.py to use)
         self.in_light = False
 
         # Load map
@@ -38,9 +38,10 @@ class Level1Background:
         self.road_layer = self.tile_map.sprite_lists["Road"]
         self.object1_layer = self.tile_map.sprite_lists["Object1"]
         self.finish_line_layer = self.tile_map.sprite_lists["FinishLine"]
-        self.puddles_layer = self.tile_map.sprite_lists["Puddles"]
+        # Puddles layer might not exist in level2, so handle it gracefully
+        self.puddles_layer = self.tile_map.sprite_lists.get("Puddles", arcade.SpriteList())
         self.speed_ramp_layer = self.tile_map.sprite_lists["SpeedRamp"]
-        
+        self.light_layer = self.tile_map.sprite_lists["Light"]
 
     def update(self, delta_time):
         # Scroll background based on car speed
@@ -81,10 +82,17 @@ class Level1Background:
             if self.speed_ramp_timer > 0:
                 self.car.speed += 4
                 self.speed_ramp_timer -= delta_time
+        
+        # Light object collision - track if player is in light area
+        light_list = arcade.check_for_collision_with_list(self.car, self.light_layer)
+        if light_list:
+            self.in_light = True
+        else:
+            self.in_light = False
 
         # Scroll all layers to create forward movement illusion
         if not self.car.losing:
-            scroll_layers = [self.road_layer, self.object1_layer, self.finish_line_layer, self.puddles_layer, self.speed_ramp_layer]
+            scroll_layers = [self.road_layer, self.object1_layer, self.finish_line_layer, self.puddles_layer, self.speed_ramp_layer, self.light_layer]
             for layer in scroll_layers:
                 for sprite in layer:
                     sprite.center_y -= self.car.speed
@@ -106,7 +114,10 @@ class Level1Background:
         
         # Draw the road layer
         self.road_layer.draw()
+        self.light_layer.draw()
         self.object1_layer.draw()
         self.finish_line_layer.draw()
         self.puddles_layer.draw()
         self.speed_ramp_layer.draw()
+        
+
