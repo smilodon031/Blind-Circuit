@@ -53,6 +53,7 @@ class Level1Background:
             if obstacle.texture != self.broken_texture:
                 obstacle.texture = self.broken_texture
                 self.car.lives -= 1
+                self.car.life_just_lost = True  # Flag for sound system
                 # Start camera shake for obstacle hit
                 self.shake_time = 0.3
 

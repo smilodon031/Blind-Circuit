@@ -45,12 +45,50 @@ class MyGame(arcade.Window):
         self.skull_texture = None
         # Light overlay texture (loaded in setup)
         self.light_texture = None
+        
+        # Level timer tracking
+        self.level_time = 0.0
+        self.level_finished = False
+        # Track cumulative speed for average calculation (speed * time)
+        self.cumulative_speed_time = 0.0
+        
+        # Button press state for visual feedback
+        self.level1_pressed = False
+        self.level2_pressed = False
+        # Button transition delay timer
+        self.button_transition_timer = 0.0
+        self.pending_level_index = None
+
+        # Sound playback flags to prevent repeated sounds
+        self.crash_sound_played = False
+        self.life_lost_sound_played = False
+        self.win_sound_played = False
+        self.loss_sound_played = False
+
+        # Track previous hit_wall state to detect wall collision events
+        self.previous_hit_wall = False
+        
+        # Engine sound system
+        self.engine_start = arcade.load_sound("assets/sounds/player/start_engine.wav")
+        self.engine_low = arcade.load_sound("assets/sounds/player/low_speed.wav")
+        self.engine_mid = arcade.load_sound("assets/sounds/player/mid_speed.wav")
+        self.engine_high = arcade.load_sound("assets/sounds/player/high_speed.wav")
+        
+        self.engine_player = None
+        self.current_engine_row = None
+        self.engine_started = False
 
 
     def setup(self):
         # Player - create fresh car each time
         self.car = PlayerCar(250, 400)
         
+        self.win_sound = arcade.load_sound("assets/sounds/player/win.wav")
+        self.loss_sound = arcade.load_sound("assets/sounds/player/loss.wav")
+        self.crash_sound = arcade.load_sound("assets/sounds/player/crash.wav")
+        self.button_sound = arcade.load_sound("assets/sounds/player/button.wav")
+        self.life_lost_sound = arcade.load_sound("assets/sounds/player/life_lost.wav")
+    
         # Reset car state to ensure it's ready
         self.car.race_won = False
         self.car.race_lost = False
@@ -65,6 +103,7 @@ class MyGame(arcade.Window):
         self.car.right_pressed = False
         self.car.up_pressed = False
         self.car.down_pressed = False
+        self.car.life_just_lost = False
 
         # Make your own sprite list instead of Scene
         self.player_list = arcade.SpriteList()
@@ -91,9 +130,65 @@ class MyGame(arcade.Window):
         
         # Initialize display speed to match car's initial speed
         self.display_speed = 0.0
+        
+        # Reset level timer and finished state
+        self.level_time = 0.0
+        self.level_finished = False
+        # Reset cumulative speed tracking for average calculation
+        self.cumulative_speed_time = 0.0
+        
+        # Reset button transition timer
+        self.button_transition_timer = 0.0
+        self.pending_level_index = None
+        
+        # Reset engine state for each level
+        self.engine_started = False
+        self.current_engine_row = None
+
+        # Reset sound flags for each level
+        self.crash_sound_played = False
+        self.life_lost_sound_played = False
+        self.win_sound_played = False
+        self.loss_sound_played = False
+        self.previous_hit_wall = False
+
+        if self.engine_player:
+            self.engine_player.pause()
+            self.engine_player = None
 
         level_class = constants.LEVEL_CLASSES[self.level_index]
         self.background = level_class(self.car, self.width, self.height)
+
+    def update_engine_sound(self, delta_time):
+        """Update engine sounds based on car speed"""
+        if not self.car:
+            return
+
+        # Play start engine sound once when car first moves
+        if self.car.speed != 0 and not self.engine_started:
+            arcade.play_sound(self.engine_start, volume=0.05)
+            self.engine_started = True
+
+        # Get speed row from car (already calculated in update_animation)
+        row = self.car.speed_row
+
+        # Only switch sound if speed row changed
+        if row == self.current_engine_row:
+            return
+
+        # Stop current engine sound if playing
+        if self.engine_player:
+            self.engine_player.pause()
+
+        # Play appropriate engine sound based on speed row
+        if row == 0:
+            self.engine_player = arcade.play_sound(self.engine_low, volume=0.05, looping=True)
+        elif row == 1:
+            self.engine_player = arcade.play_sound(self.engine_mid, volume=0.05, looping=True)
+        else:
+            self.engine_player = arcade.play_sound(self.engine_high, volume=0.05, looping=True)
+
+        self.current_engine_row = row
 
     def on_draw(self):
         self.clear()
@@ -105,17 +200,19 @@ class MyGame(arcade.Window):
             self.start_screen_sprite.draw()
             
             # Draw level selection buttons
-            # Level 1 button
+            # Level 1 button - use pressed color if clicked
             level1_button_x = self.width // 2 - 80
             level1_button_y = self.height // 2 - 100
             level1_button_width = 120
             level1_button_height = 50
+            # Change button color based on press state
+            level1_color = arcade.color.DARK_GRAY if self.level1_pressed else arcade.color.GRAY
             arcade.draw_rectangle_filled(
                 level1_button_x,
                 level1_button_y,
                 level1_button_width,
                 level1_button_height,
-                arcade.color.DARK_GRAY
+                level1_color
             )
             arcade.draw_rectangle_outline(
                 level1_button_x,
@@ -136,17 +233,19 @@ class MyGame(arcade.Window):
                 font_name=self.font_name,
             )
             
-            # Level 2 button
+            # Level 2 button - use pressed color if clicked
             level2_button_x = self.width // 2 + 80
             level2_button_y = self.height // 2 - 100
             level2_button_width = 120
             level2_button_height = 50
+            # Change button color based on press state
+            level2_color = arcade.color.DARK_GRAY if self.level2_pressed else arcade.color.GRAY
             arcade.draw_rectangle_filled(
                 level2_button_x,
                 level2_button_y,
                 level2_button_width,
                 level2_button_height,
-                arcade.color.DARK_GRAY
+                level2_color
             )
             arcade.draw_rectangle_outline(
                 level2_button_x,
@@ -235,17 +334,17 @@ class MyGame(arcade.Window):
                 progress = max(0.0, min(1.0, progress))  # Clamp between 0.0 and 1.0
                 
                 # Draw progress bar in left circular area of dashboard
-                bar_x = 70  # Left side of dashboard
+                bar_x = 60  # Left side of dashboard
                 bar_y = 15  # Middle area of dashboard
-                bar_width = 80
-                bar_height = 20
+                bar_width = 60
+                bar_height = 10
                 
                 # Draw percentage text just above the progress bar
                 percentage = int(progress * 100)
                 arcade.draw_text(
                     f"{percentage}%",
-                    bar_x,
-                    bar_y + 25,  # Just above the bar
+                    bar_x + 50,
+                    bar_y- 5,  # Just above the bar
                     arcade.color.WHITE,
                     14,
                     anchor_x="center",
@@ -323,49 +422,121 @@ class MyGame(arcade.Window):
                             heart_size,
                             self.heart_texture
                         )
+            
+            # Draw time on dashboard (near bottom center)
+            minutes = int(self.level_time // 60)
+            seconds = int(self.level_time % 60)
+            time_text = f"Time: {minutes:02d}:{seconds:02d}"
+            arcade.draw_text(
+                time_text,
+                30,
+                40,
+                arcade.color.WHITE,
+                14,
+                font_name=self.font_name,
+            )
 
         elif self.state == STATE_WIN:
+            # Draw big "W" for win
             arcade.draw_text(
-                "YOU WIN!",
-                self.width//2,
-                self.height//2 + 40,
+                "W",
+                self.width // 2,
+                self.height // 2 + 120,
                 arcade.color.GREEN,
-                50,
+                160,
                 anchor_x="center",
                 font_name=self.font_name,
             )
+            
+            # Draw time taken
+            minutes = int(self.level_time // 60)
+            seconds = int(self.level_time % 60)
+            arcade.draw_text(
+                f"Time Taken: {minutes:02d}:{seconds:02d}",
+                self.width // 2,
+                self.height // 2 + 20,
+                arcade.color.WHITE,
+                28,
+                anchor_x="center",
+                font_name=self.font_name,
+            )
+            
+            # Draw average speed (calculate from cumulative speed over time)
+            if self.level_time > 0:
+                average_speed = (self.cumulative_speed_time / self.level_time) * 30
+            else:
+                average_speed = 0
+            arcade.draw_text(
+                f"Average Speed: {int(average_speed)} Km/hr",
+                self.width // 2,
+                self.height // 2 - 20,
+                arcade.color.WHITE,
+                28,
+                anchor_x="center",
+                font_name=self.font_name,
+            )
+            
+            # Draw next level instruction
             arcade.draw_text(
                 "Press N for Next Level",
-                self.width//2,
-                self.height//2,
+                self.width // 2,
+                self.height // 2 - 80,
                 arcade.color.WHITE,
-                25,
+                20,
                 anchor_x="center",
                 font_name=self.font_name,
             )
 
         elif self.state == STATE_LOSE:
+            # Draw big "L" for lose
             arcade.draw_text(
-                "GAME OVER",
-                self.width//2,
-                self.height//2 + 40,
+                "L",
+                self.width // 2,
+                self.height // 2 + 120,
                 arcade.color.RED,
-                50,
+                160,
                 anchor_x="center",
                 font_name=self.font_name,
             )
+            
+            # Draw crash message
+            arcade.draw_text(
+                "You Crashed!",
+                self.width // 2,
+                self.height // 2 + 20,
+                arcade.color.WHITE,
+                28,
+                anchor_x="center",
+                font_name=self.font_name,
+            )
+            
+            # Draw retry instruction
             arcade.draw_text(
                 "Press R to Retry",
-                self.width//2,
-                self.height//2,
+                self.width // 2,
+                self.height // 2 - 60,
                 arcade.color.WHITE,
-                25,
+                20,
                 anchor_x="center",
                 font_name=self.font_name,
             )
 
 
     def on_update(self, delta_time):
+        # Handle button transition delay
+        if self.state == STATE_START and self.button_transition_timer > 0:
+            self.button_transition_timer -= delta_time
+            if self.button_transition_timer <= 0 and self.pending_level_index is not None:
+                # Timer finished, now transition to the level
+                self.level_index = self.pending_level_index
+                self.state = STATE_PLAYING
+                self.setup()
+                # Reset button states
+                self.level1_pressed = False
+                self.level2_pressed = False
+                self.pending_level_index = None
+                return  # Skip other updates during transition
+        
         self.background.update(delta_time)
         self.player_list.update()
         
@@ -374,16 +545,70 @@ class MyGame(arcade.Window):
             actual_speed = self.car.speed
             # Smooth the display speed: display_speed += (actual_speed - display_speed) * 0.1
             self.display_speed += (actual_speed - self.display_speed) * 0.1
+        
+        # Update level timer if playing and level not finished
+        if self.state == STATE_PLAYING and not self.level_finished:
+            self.level_time += delta_time
+            # Track cumulative speed for average calculation
+            if self.car:
+                self.cumulative_speed_time += self.car.speed * delta_time
+            # Update engine sounds during gameplay
+            self.update_engine_sound(delta_time)
+
+        # Check for wall collision sound (only once per collision)
+        if self.car.hit_wall and not self.previous_hit_wall and not self.crash_sound_played:
+            arcade.play_sound(self.crash_sound, volume=0.7)
+            self.crash_sound_played = True
+        elif not self.car.hit_wall:
+            self.crash_sound_played = False  # Reset flag when not hitting wall
+
+        # Update previous hit_wall state
+        self.previous_hit_wall = self.car.hit_wall
+
+        # Check for life lost sound (only once per life loss)
+        if self.car.life_just_lost and not self.life_lost_sound_played:
+            arcade.play_sound(self.life_lost_sound, volume=0.75)
+            self.life_lost_sound_played = True
+            self.car.life_just_lost = False  # Reset the flag
+
+        # Reset life lost sound flag when not losing life
+        if not self.car.life_just_lost:
+            self.life_lost_sound_played = False
 
         # Check win/lose conditions
-        if self.car.explosion_over:
-            self.state = STATE_LOSE
-        if self.car.race_won:
+        if self.car.race_won and not self.level_finished:
+            self.level_finished = True
             self.state = STATE_WIN
+            # Play win sound once
+            if not self.win_sound_played:
+                arcade.play_sound(self.win_sound, volume=0.8)
+                self.win_sound_played = True
+            # Stop engine sound on win
+            if self.engine_player:
+                self.engine_player.pause()
+                self.engine_player = None
+                self.current_engine_row = None
+        
+        if self.car.explosion_over and not self.level_finished:
+            self.level_finished = True
+            self.state = STATE_LOSE
+            # Play loss sound once
+            if not self.loss_sound_played:
+                arcade.play_sound(self.loss_sound, volume=0.8)
+                self.loss_sound_played = True
+            # Stop engine sound on lose
+            if self.engine_player:
+                self.engine_player.pause()
+                self.engine_player = None
+                self.current_engine_row = None
 
     def on_mouse_press(self, x, y, button, modifiers):
         """Handle mouse clicks for level selection"""
         if self.state == STATE_START and button == arcade.MOUSE_BUTTON_LEFT:
+            # Reset button press states
+            self.level1_pressed = False
+            self.level2_pressed = False
+            
             # Level 1 button (left side)
             level1_button_x = self.width // 2 - 80
             level1_button_y = self.height // 2 - 100
@@ -392,9 +617,11 @@ class MyGame(arcade.Window):
             
             if (level1_button_x - level1_button_width // 2 <= x <= level1_button_x + level1_button_width // 2 and
                 level1_button_y - level1_button_height // 2 <= y <= level1_button_y + level1_button_height // 2):
-                self.level_index = 0
-                self.state = STATE_PLAYING
-                self.setup()
+                # If Level 1 clicked - show visual feedback first
+                self.level1_pressed = True
+                arcade.play_sound(self.button_sound, volume=0.35)
+                self.pending_level_index = 0
+                self.button_transition_timer = 0.15  # 0.15 second delay to show feedback
                 return
             
             # Level 2 button (right side)
@@ -405,10 +632,17 @@ class MyGame(arcade.Window):
             
             if (level2_button_x - level2_button_width // 2 <= x <= level2_button_x + level2_button_width // 2 and
                 level2_button_y - level2_button_height // 2 <= y <= level2_button_y + level2_button_height // 2):
-                self.level_index = 1
-                self.state = STATE_PLAYING
-                self.setup()
+                # If Level 2 clicked - show visual feedback first
+                self.level2_pressed = True
+                arcade.play_sound(self.button_sound, volume=0.35)
+                self.pending_level_index = 1
+                self.button_transition_timer = 0.15  # 0.15 second delay to show feedback
                 return
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        """Reset button press states when mouse is released"""
+        self.level1_pressed = False
+        self.level2_pressed = False
 
     def on_key_press(self, key, modifiers):
 

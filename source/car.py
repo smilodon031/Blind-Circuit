@@ -77,6 +77,11 @@ class PlayerCar(arcade.Sprite):
         self.acceleration = 0.2
         # Initialize the destroyed attribute that was referenced but not defined
         self.destroyed = False
+        # Speed row for sound system (0=low, 1=mid, 2=high)
+        self.speed_row = 0
+
+        # Flag to track when a life was just lost (for sound system)
+        self.life_just_lost = False
 
     def current_speed(self):
         """Returns current speed as an integer 0-8 for dashboard indexing"""
@@ -191,6 +196,9 @@ class PlayerCar(arcade.Sprite):
                 row = 1
             else:
                 row = 2
+
+            # Store speed row so sound system can use it
+            self.speed_row = row
 
             # Select column based on direction/action
             if self.left_pressed:
