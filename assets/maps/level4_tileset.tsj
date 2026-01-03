@@ -1,0 +1,14 @@
+{ "columns":3,
+ "image":"level4.png",
+ "imageheight":448,
+ "imagewidth":192,
+ "margin":0,
+ "name":"level4_tileset",
+ "spacing":0,
+ "tilecount":21,
+ "tiledversion":"1.11.2",
+ "tileheight":64,
+ "tilewidth":64,
+ "type":"tileset",
+ "version":"1.10"
+}

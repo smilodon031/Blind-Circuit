@@ -1,7 +1,7 @@
 import arcade
 import random
 
-class Level1Background:
+class Level4Background:
     def __init__(self, car, screen_width, screen_height):
         self.car = car
         self.screen_width = screen_width
@@ -17,7 +17,7 @@ class Level1Background:
         self.puddle_timer = 10
         self.speed_ramp_timer = 5
         self.view_bottom = 0
-        self.map_path = "assets/maps/Level1.tmx"
+        self.map_path = "assets/maps/level4.tmx"
         self.broken_texture = arcade.load_texture('assets/sprites/obstacles/broken_texture.png')
         
         # Camera shake for obstacle hits

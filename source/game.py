@@ -55,6 +55,8 @@ class MyGame(arcade.Window):
         # Button press state for visual feedback
         self.level1_pressed = False
         self.level2_pressed = False
+        self.level3_pressed = False
+        self.level4_pressed = False
         # Button transition delay timer
         self.button_transition_timer = 0.0
         self.pending_level_index = None
@@ -126,7 +128,7 @@ class MyGame(arcade.Window):
         # Load skull texture for when out of lives
         self.skull_texture = arcade.load_texture("assets/sprites/player/skull.png")
         # Load light overlay texture
-        self.light_texture = arcade.load_texture("assets/maps/light.png")
+        self.light_texture = arcade.load_texture("assets/sprites/obstacles/light.png")
         
         # Initialize display speed to match car's initial speed
         self.display_speed = 0.0
@@ -259,6 +261,72 @@ class MyGame(arcade.Window):
                 "Level 2",
                 level2_button_x,
                 level2_button_y,
+                arcade.color.WHITE,
+                20,
+                anchor_x="center",
+                anchor_y="center",
+                font_name=self.font_name,
+            )
+
+            # Level 3 button - use pressed color if clicked
+            level3_button_x = self.width // 2 - 80
+            level3_button_y = self.height // 2 - 180
+            level3_button_width = 120
+            level3_button_height = 50
+            # Change button color based on press state
+            level3_color = arcade.color.DARK_GRAY if self.level3_pressed else arcade.color.GRAY
+            arcade.draw_rectangle_filled(
+                level3_button_x,
+                level3_button_y,
+                level3_button_width,
+                level3_button_height,
+                level3_color
+            )
+            arcade.draw_rectangle_outline(
+                level3_button_x,
+                level3_button_y,
+                level3_button_width,
+                level3_button_height,
+                arcade.color.WHITE,
+                2
+            )
+            arcade.draw_text(
+                "Level 3",
+                level3_button_x,
+                level3_button_y,
+                arcade.color.WHITE,
+                20,
+                anchor_x="center",
+                anchor_y="center",
+                font_name=self.font_name,
+            )
+
+            # Level 4 button - use pressed color if clicked
+            level4_button_x = self.width // 2 + 80
+            level4_button_y = self.height // 2 - 180
+            level4_button_width = 120
+            level4_button_height = 50
+            # Change button color based on press state
+            level4_color = arcade.color.DARK_GRAY if self.level4_pressed else arcade.color.GRAY
+            arcade.draw_rectangle_filled(
+                level4_button_x,
+                level4_button_y,
+                level4_button_width,
+                level4_button_height,
+                level4_color
+            )
+            arcade.draw_rectangle_outline(
+                level4_button_x,
+                level4_button_y,
+                level4_button_width,
+                level4_button_height,
+                arcade.color.WHITE,
+                2
+            )
+            arcade.draw_text(
+                "Level 4",
+                level4_button_x,
+                level4_button_y,
                 arcade.color.WHITE,
                 20,
                 anchor_x="center",
@@ -534,6 +602,8 @@ class MyGame(arcade.Window):
                 # Reset button states
                 self.level1_pressed = False
                 self.level2_pressed = False
+                self.level3_pressed = False
+                self.level4_pressed = False
                 self.pending_level_index = None
                 return  # Skip other updates during transition
         
@@ -608,6 +678,8 @@ class MyGame(arcade.Window):
             # Reset button press states
             self.level1_pressed = False
             self.level2_pressed = False
+            self.level3_pressed = False
+            self.level4_pressed = False
             
             # Level 1 button (left side)
             level1_button_x = self.width // 2 - 80
@@ -638,11 +710,43 @@ class MyGame(arcade.Window):
                 self.pending_level_index = 1
                 self.button_transition_timer = 0.15  # 0.15 second delay to show feedback
                 return
+            
+            # Level 3 button (center bottom)
+            level3_button_x = self.width // 2 - 80
+            level3_button_y = self.height // 2 - 160
+            level3_button_width = 120
+            level3_button_height = 50
+            
+            if (level3_button_x - level3_button_width // 2 <= x <= level3_button_x + level3_button_width // 2 and
+                level3_button_y - level3_button_height // 2 <= y <= level3_button_y + level3_button_height // 2):
+                # If Level 3 clicked - show visual feedback first
+                self.level3_pressed = True
+                arcade.play_sound(self.button_sound, volume=0.35)
+                self.pending_level_index = 2
+                self.button_transition_timer = 0.15  # 0.15 second delay to show feedback
+                return
+
+            # Level 4 button (right bottom)
+            level4_button_x = self.width // 2 + 80
+            level4_button_y = self.height // 2 - 180
+            level4_button_width = 120
+            level4_button_height = 50
+            
+            if (level4_button_x - level4_button_width // 2 <= x <= level4_button_x + level4_button_width // 2 and
+                level4_button_y - level4_button_height // 2 <= y <= level4_button_y + level4_button_height // 2):
+                # If Level 4 clicked - show visual feedback first
+                self.level4_pressed = True
+                arcade.play_sound(self.button_sound, volume=0.35)
+                self.pending_level_index = 3
+                self.button_transition_timer = 0.15  # 0.15 second delay to show feedback
+                return
 
     def on_mouse_release(self, x, y, button, modifiers):
         """Reset button press states when mouse is released"""
         self.level1_pressed = False
         self.level2_pressed = False
+        self.level3_pressed = False
+        self.level4_pressed = False
 
     def on_key_press(self, key, modifiers):
 
