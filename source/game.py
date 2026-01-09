@@ -57,6 +57,7 @@ class MyGame(arcade.Window):
         self.level2_pressed = False
         self.level3_pressed = False
         self.level4_pressed = False
+        self.level5_pressed = False
         # Button transition delay timer
         self.button_transition_timer = 0.0
         self.pending_level_index = None
@@ -334,6 +335,39 @@ class MyGame(arcade.Window):
                 font_name=self.font_name,
             )
 
+            # Level 5 button (center bottom)
+            level5_button_x = self.width // 2 - 80
+            level5_button_y = self.height // 2 - 260
+            level5_button_width = 120
+            level5_button_height = 50
+            # Change button color based on press state
+            level5_color = arcade.color.DARK_GRAY if self.level5_pressed else arcade.color.GRAY
+            arcade.draw_rectangle_filled(
+                level5_button_x,
+                level5_button_y,
+                level5_button_width,
+                level5_button_height,
+                level5_color
+            )
+            arcade.draw_rectangle_outline(
+                level5_button_x,
+                level5_button_y,
+                level5_button_width,
+                level5_button_height,
+                arcade.color.WHITE,
+                2
+            )
+            arcade.draw_text(
+                "Level 5",
+                level5_button_x,
+                level5_button_y,
+                arcade.color.WHITE,
+                20,
+                anchor_x="center",
+                anchor_y="center",
+                font_name=self.font_name,
+            )
+
         elif self.state == STATE_PLAYING:
             # Camera shake effect for obstacle hits
             if self.background.shake_time > 0:
@@ -604,6 +638,7 @@ class MyGame(arcade.Window):
                 self.level2_pressed = False
                 self.level3_pressed = False
                 self.level4_pressed = False
+                self.level5_pressed = False
                 self.pending_level_index = None
                 return  # Skip other updates during transition
         
@@ -680,6 +715,7 @@ class MyGame(arcade.Window):
             self.level2_pressed = False
             self.level3_pressed = False
             self.level4_pressed = False
+            self.level5_pressed = False
             
             # Level 1 button (left side)
             level1_button_x = self.width // 2 - 80
@@ -741,12 +777,29 @@ class MyGame(arcade.Window):
                 self.button_transition_timer = 0.15  # 0.15 second delay to show feedback
                 return
 
+            # Level 5 button (center bottom row 3)
+            # Must match drawing position: self.width // 2 - 80 (user customized)
+            level5_button_x = self.width // 2 - 80
+            level5_button_y = self.height // 2 - 260
+            level5_button_width = 120
+            level5_button_height = 50
+            
+            if (level5_button_x - level5_button_width // 2 <= x <= level5_button_x + level5_button_width // 2 and
+                level5_button_y - level5_button_height // 2 <= y <= level5_button_y + level5_button_height // 2):
+                # If Level 5 clicked - show visual feedback first
+                self.level5_pressed = True
+                arcade.play_sound(self.button_sound, volume=0.35)
+                self.pending_level_index = 4
+                self.button_transition_timer = 0.15  # 0.15 second delay to show feedback
+                return
+
     def on_mouse_release(self, x, y, button, modifiers):
         """Reset button press states when mouse is released"""
         self.level1_pressed = False
         self.level2_pressed = False
         self.level3_pressed = False
         self.level4_pressed = False
+        self.level5_pressed = False
 
     def on_key_press(self, key, modifiers):
 
