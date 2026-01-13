@@ -24,7 +24,11 @@ class FireDispenser(arcade.Sprite):
         self.time_counter = 0.0
         self.animation_speed = 0.15
         self.is_activated = False
+        self.is_stopped = False
         self.hit_box = [(-32, -32), (32, -32), (32, 32), (-32, 32)]
+
+    def stop_animation(self):
+        self.is_stopped = True
 
     def update_animation(self, delta_time, player_nearby):
         # Activate when player gets close
@@ -33,7 +37,7 @@ class FireDispenser(arcade.Sprite):
             self.cur_texture_index = 1
             self.texture = self.textures[1]
         
-        if not self.is_activated:
+        if not self.is_activated or self.is_stopped:
             return
         
         self.time_counter += delta_time
@@ -105,8 +109,10 @@ class Level5Background:
                 self.car.life_just_lost = True
                 self.shake_time = 0.3
 
-        # Fire dispenser collision (shake only)
-        if arcade.check_for_collision_with_list(self.car, self.fire_dispenser_list):
+        # Fire dispenser collision (shake and stop animation)
+        fire_hits = arcade.check_for_collision_with_list(self.car, self.fire_dispenser_list)
+        for dispenser in fire_hits:
+            dispenser.stop_animation()
             self.shake_time = 0.3
 
         # Wall hit shake

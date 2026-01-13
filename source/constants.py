@@ -4,6 +4,8 @@ from level3 import Level3Background
 from level4 import Level4Background
 from level5 import Level5Background
 
+from level6 import Level6Background
+
 SCREEN_WIDTH = 500
 SCREEN_HEIGHT = 800
 
@@ -12,7 +14,8 @@ LEVEL_CLASSES = [
     Level2Background,
     Level3Background,
     Level4Background,
-    Level5Background
+    Level5Background,
+    Level6Background
 ]
 
 
