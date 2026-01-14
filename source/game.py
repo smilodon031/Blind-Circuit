@@ -85,7 +85,9 @@ class MyGame(arcade.Window):
 
     def setup(self):
         # Player - create fresh car each time
-        self.car = PlayerCar(250, 400)
+        # Lane centers: [115, 205, 295, 385]
+        # Player spawns in middle lane (205)
+        self.car = PlayerCar(295, 400)
         
         self.win_sound = arcade.load_sound("assets/sounds/player/win.wav")
         self.loss_sound = arcade.load_sound("assets/sounds/player/loss.wav")
@@ -678,7 +680,8 @@ class MyGame(arcade.Window):
                 return  # Skip other updates during transition
         
         self.background.update(delta_time)
-        self.player_list.update()
+        if self.car:
+            self.car.update(delta_time)
         
         # Update smoothed display speed for HUD
         if self.car:
@@ -878,13 +881,13 @@ class MyGame(arcade.Window):
 
         # Only allow car movement when playing and not in losing state
         if self.state == STATE_PLAYING and self.car and not self.car.losing:
-            if key == arcade.key.LEFT:
+            if key == arcade.key.LEFT or key == arcade.key.A:
                 self.car.left_pressed = True
-            elif key == arcade.key.RIGHT:
+            elif key == arcade.key.RIGHT or key == arcade.key.D:
                 self.car.right_pressed = True
-            elif key == arcade.key.UP:
+            elif key == arcade.key.UP or key == arcade.key.W:
                 self.car.up_pressed = True
-            elif key == arcade.key.DOWN:
+            elif key == arcade.key.DOWN or key == arcade.key.S:
                 self.car.down_pressed = True
 
     def on_key_release(self, key, modifiers):
@@ -895,12 +898,12 @@ class MyGame(arcade.Window):
         if not self.car or self.car.losing:
             return
 
-        if key == arcade.key.LEFT:
+        if key == arcade.key.LEFT or key == arcade.key.A:
             self.car.left_pressed = False
-        elif key == arcade.key.RIGHT:
+        elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.car.right_pressed = False
-        elif key == arcade.key.UP:
+        elif key == arcade.key.UP or key == arcade.key.W:
             self.car.up_pressed = False
-        elif key == arcade.key.DOWN:
+        elif key == arcade.key.DOWN or key == arcade.key.S:
             self.car.down_pressed = False
 

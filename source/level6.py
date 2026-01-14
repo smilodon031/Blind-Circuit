@@ -1,5 +1,6 @@
 import arcade
 import random
+from bot_ai import BotCar
 
 class Drone(arcade.Sprite):
     def __init__(self, x, y):
@@ -72,6 +73,15 @@ class Level6Background:
 
         self.in_light = False
 
+        self.bot_list = arcade.SpriteList()
+        # Lane centers: [115, 205, 295, 385]
+        # Player spawns at lane 205, bot spawns at lane 115 (outer left)
+        bot_x = 115
+        bot_y = car.center_y - 20
+        bot = BotCar(bot_x, bot_y, level_difficulty=6, car_target=car)
+        self.bot_list.append(bot)
+        assert car.center_x != bot.center_x, "Player and bot must spawn in different lanes"
+
         # Load map
         self.tile_map = arcade.load_tilemap(self.map_path, scaling=1.57)
 
@@ -99,6 +109,15 @@ class Level6Background:
         
         # Puddles might not exist in level 6, but good to check or handle if added later
         self.puddles_layer = self.tile_map.sprite_lists.get("Puddles", arcade.SpriteList())
+        
+        # Pass obstacles to bot
+        for bot in self.bot_list:
+            bot.set_context(
+                obstacles=[self.object1_layer],
+                drones=[self.drones_list],
+                puddles=[self.puddles_layer],
+                ramps=[self.speed_ramp_layer]
+            )
 
     def update(self, delta_time):
         # Scroll background based on car speed
@@ -186,12 +205,36 @@ class Level6Background:
         else:
             self.in_light = False
 
+        for bot in self.bot_list:
+            bot.update(delta_time)
+            if not bot.exploding and not bot.race_finished:
+                object1_bot_list = arcade.check_for_collision_with_list(bot, self.object1_layer)
+                for obstacle in object1_bot_list:
+                    if obstacle.texture != self.broken_texture:
+                        bot.explode()
+                
+                drones_bot_list = arcade.check_for_collision_with_list(bot, self.drones_list)
+                for drone in drones_bot_list:
+                    if not getattr(drone, 'broken', False):
+                        bot.explode()
+                
+                finish_line_bot_list = arcade.check_for_collision_with_list(bot, self.finish_line_layer)
+                if finish_line_bot_list:
+                    finish = finish_line_bot_list[0]
+                    if bot.center_y > finish.center_y and not bot.race_finished:
+                        bot.race_finished = True
+                        self.car.race_lost = True
+                        self.car.losing = True
+
         # Scroll all layers to create forward movement illusion
         if not self.car.losing:
             scroll_layers = [self.road_layer, self.object1_layer, self.finish_line_layer, self.puddles_layer, self.speed_ramp_layer, self.light_layer, self.drones_list]
             for layer in scroll_layers:
                 for sprite in layer:
                     sprite.center_y -= self.car.speed
+            for bot in self.bot_list:
+                if not bot.race_finished:
+                    bot.center_y -= self.car.speed
         
         # Update camera shake timer
         if self.shake_time > 0:
@@ -220,3 +263,4 @@ class Level6Background:
         self.puddles_layer.draw()
         self.speed_ramp_layer.draw()
         self.drones_list.draw()
+        self.bot_list.draw()
