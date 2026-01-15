@@ -204,6 +204,35 @@ class MyGame(arcade.Window):
         if self.state == STATE_START:
             # FIXED: Sprite is now loaded once in __init__, just draw it here
             self.start_screen_sprite.draw()
+
+            # Draw controls instructions
+            arcade.draw_text(
+                "Controls: Arrow Keys / WASD",
+                self.width // 2,
+                self.height - 100,
+                arcade.color.WHITE,
+                20,
+                anchor_x="center",
+                font_name=self.font_name,
+            )
+            arcade.draw_text(
+                "UP/W: Accelerate | DOWN/S: Brake",
+                self.width // 2,
+                self.height - 130,
+                arcade.color.WHITE,
+                14,
+                anchor_x="center",
+                font_name=self.font_name,
+            )
+            arcade.draw_text(
+                "LEFT/A: Left | RIGHT/D: Right",
+                self.width // 2,
+                self.height - 155,
+                arcade.color.WHITE,
+                14,
+                anchor_x="center",
+                font_name=self.font_name,
+            )
             
             # Draw level selection buttons
             # Level 1 button - use pressed color if clicked
